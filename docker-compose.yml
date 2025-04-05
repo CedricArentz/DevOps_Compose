@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:latest
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    networks:
+      - exam-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  backend:
+    image: registry.gitlab.com/saxionnl/hbo-ict/2.3-devops/2024-2025/exam-regular/22/backend:latest
+    
+    env_file:
+      - .env
+    ports:
+      - "${BACKEND_PORT}:80"
+    networks:
+      - exam-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  seed:
+    image: registry.gitlab.com/saxionnl/hbo-ict/2.3-devops/2024-2025/exam-regular/22/seed:latest
+    env_file:
+      - .env
+    networks:
+      - exam-network
+    depends_on:
+      - postgres
+      - backend
+
+networks:
+  exam-network:
+    driver: bridge
